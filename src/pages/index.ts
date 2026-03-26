@@ -1,0 +1,15 @@
+export { HomePage } from "./HomePage";
+export { LoginPage } from "./LoginPage";
+export { SignupPage } from "./SignupPage";
+export { NotFoundPage } from "./NotFoundPage";
+export { PatientDashboard } from "./patient/PatientDashboard";
+export { PatientHistory } from "./patient/PatientHistory";
+export { PatientReports } from "./patient/PatientReports";
+export { PatientAppointments } from "./patient/PatientAppointments";
+export { PatientNotes } from "./patient/PatientNotes";
+export { PatientAlerts } from "./patient/PatientAlerts";
+export { DoctorDashboard } from "./doctor/DoctorDashboard";
+export { DoctorPatients } from "./doctor/DoctorPatients";
+export { DoctorPatientDetail } from "./doctor/DoctorPatientDetail";
+export { DoctorAlerts } from "./doctor/DoctorAlerts";
+export { DoctorAppointments } from "./doctor/DoctorAppointments";
