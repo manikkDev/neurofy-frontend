@@ -5,13 +5,12 @@ import { z } from "zod";
 import { useState } from "react";
 import { useAuth } from "@/features/auth";
 
+const roles = ["patient", "doctor"] as const;
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["patient", "doctor"], {
-    errorMap: () => ({ message: "Please select a role" }),
-  }),
+  role: z.enum(roles),
 });
 
 type SignupForm = z.infer<typeof signupSchema>;
