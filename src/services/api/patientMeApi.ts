@@ -13,6 +13,7 @@ import type {
   PatientStats,
   DoctorNote,
   Alert,
+  PatientLiveDeviceState,
 } from "@/types";
 
 export interface DashboardSummary extends PatientStats {
@@ -41,6 +42,11 @@ export const patientMeApi = {
 
   getStats: (token: string) =>
     apiClient.get<ApiResponse<PatientStats>>("/patients/me/stats", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  getLive: (token: string) =>
+    apiClient.get<ApiResponse<PatientLiveDeviceState>>("/patients/me/live", {
       headers: { Authorization: `Bearer ${token}` },
     }),
 

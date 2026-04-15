@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { socket } from "./client";
+import { connectSocket, socket } from "./client";
 
 export interface LiveTelemetryData {
   status: "DETECTED" | "NOT_DETECTED";
@@ -24,6 +24,7 @@ export function useLiveTelemetry(patientId: string | null) {
     if (!patientId) return;
 
     const eventName = `telemetry:live:${patientId}`;
+    connectSocket();
 
     const handleTelemetry = (data: LiveTelemetryData) => {
       setTelemetry(data);

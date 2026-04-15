@@ -143,6 +143,7 @@ export interface LiveTelemetry {
   deviceId: string;
   source: "SERIAL" | "WIRELESS";
   detectedAt: string;
+  receivedAt: string;
   status: TremorStatus;
   frequencyHz?: number;
   snr?: number;
@@ -162,6 +163,51 @@ export interface DeviceConnectionStatus {
   ts: string;
 }
 
+export type LiveConnectionState =
+  | "connected_active"
+  | "connected_idle"
+  | "disconnected"
+  | "no_data"
+  | "serial_disabled";
+
+export interface WaveformAvailability {
+  available: boolean;
+  reason: string;
+  source: "SERIAL" | "WIRELESS" | "NONE";
+}
+
+export interface PatientLiveDeviceState {
+  device: {
+    deviceId: string | null;
+    label: string | null;
+    pairingStatus: string | null;
+    status: string | null;
+    batteryLevel?: number;
+    lastSyncAt?: string | null;
+    firmwareVersion?: string | null;
+  };
+  connection: {
+    serialEnabled: boolean;
+    connected: boolean;
+    state: LiveConnectionState;
+    portPath: string;
+    baudRate: number;
+    lastConnectedAt?: string;
+    lastDisconnectedAt?: string;
+    lastReceivedAt?: string;
+  };
+  latestTelemetry: LiveTelemetry | null;
+  recentEvents: Array<{
+    type: string;
+    deviceId: string;
+    source: "SERIAL" | "WIRELESS";
+    message: string;
+    rawLine: string;
+    ts: string;
+  }>;
+  waveform: WaveformAvailability;
+}
+
 /** Snapshot returned by GET /api/debug/serial */
 export interface SerialDebugState {
   connected: boolean;
@@ -169,7 +215,17 @@ export interface SerialDebugState {
   baudRate: number;
   lastConnectedAt?: string;
   lastDisconnectedAt?: string;
+  lastReceivedAt?: string;
   recentRawLines: Array<{ rawLine: string; ts: string }>;
+  recentEvents: Array<{
+    type: string;
+    deviceId: string;
+    source: "SERIAL" | "WIRELESS";
+    message: string;
+    rawLine: string;
+    ts: string;
+  }>;
   lastNormalized?: LiveTelemetry;
   recentErrors: Array<{ rawLine: string; error: string; ts: string }>;
+  waveform: WaveformAvailability;
 }

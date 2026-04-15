@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { socket } from "./client";
+import { connectSocket, socket } from "./client";
 
 export interface DeviceStatusData {
   connected: boolean;
@@ -21,6 +21,7 @@ export function useDeviceStatus(patientId: string | null) {
     if (!patientId) return;
 
     const eventName = `device:status:${patientId}`;
+    connectSocket();
 
     const handleStatus = (data: DeviceStatusData) => {
       setDeviceStatus(data);

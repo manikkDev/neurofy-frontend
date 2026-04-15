@@ -16,30 +16,32 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { socket, connectSocket } from "@/services/socket/client";
-import type { LiveTelemetry, DeviceConnectionStatus, SerialDebugState } from "@/types/domain";
+import { patientMeApi } from "@/services/api/patientMeApi";
+import { storage } from "@/lib/storage";
+import type { LiveTelemetry, DeviceConnectionStatus, PatientLiveDeviceState } from "@/types/domain";
 
 const MAX_HISTORY = 30;
 const POLL_INTERVAL_MS = 2000;
-// Use VITE_API_BASE_URL but strip trailing /api to get the base server URL
-const _rawApiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-const API_BASE = _rawApiBase
-  ? _rawApiBase.replace(/\/api\/?$/, "")
-  : "http://localhost:5000";
-
 
 export interface LiveTelemetryState {
   latest: LiveTelemetry | null;
   history: LiveTelemetry[];
   deviceConnected: boolean;
   lastUpdatedAt: Date | null;
+  liveState: PatientLiveDeviceState | null;
+  socketConnected: boolean;
+  backendAvailable: boolean;
 }
 
-export function useLiveTelemetry(_patientId: string | undefined): LiveTelemetryState {
+export function useLiveTelemetry(patientId: string | undefined): LiveTelemetryState {
   const [state, setState] = useState<LiveTelemetryState>({
     latest: null,
     history: [],
     deviceConnected: false,
     lastUpdatedAt: null,
+    liveState: null,
+    socketConnected: false,
+    backendAvailable: true,
   });
 
   // Track the last rawLine we processed so we don't duplicate entries
@@ -49,26 +51,41 @@ export function useLiveTelemetry(_patientId: string | undefined): LiveTelemetryS
   // PRIMARY: HTTP polling
   // ----------------------------------------------------------------
   const poll = useCallback(async () => {
+    const token = storage.getToken();
+    if (!token) return;
+
     try {
-      const res = await fetch(`${API_BASE}/api/debug/serial`);
-      if (!res.ok) return;
-      const json = await res.json() as { ok: boolean; data: SerialDebugState };
-      const dbg = json.data;
-      if (!dbg) return;
+      const response = await patientMeApi.getLive(token);
+      const live = response.data;
+      if (!live) {
+        return;
+      }
 
-      // Update connection status
-      const connected = dbg.connected;
+      const normalized = live.latestTelemetry;
 
-      // Use lastNormalized as the latest telemetry
-      const normalized = dbg.lastNormalized;
       if (!normalized) {
-        setState((prev) => ({ ...prev, deviceConnected: connected }));
+        setState((prev) => ({
+          ...prev,
+          liveState: live,
+          deviceConnected: live.connection.connected,
+          backendAvailable: true,
+          lastUpdatedAt: live.connection.lastReceivedAt
+            ? new Date(live.connection.lastReceivedAt)
+            : prev.lastUpdatedAt,
+        }));
         return;
       }
 
       // Only push to history if this is a new reading (diff rawLine)
       if (normalized.rawLine === lastRawLineRef.current) {
-        setState((prev) => ({ ...prev, deviceConnected: connected }));
+        setState((prev) => ({
+          ...prev,
+          latest: normalized,
+          liveState: live,
+          deviceConnected: live.connection.connected,
+          backendAvailable: true,
+          lastUpdatedAt: new Date(normalized.receivedAt ?? normalized.detectedAt),
+        }));
         return;
       }
 
@@ -79,29 +96,40 @@ export function useLiveTelemetry(_patientId: string | undefined): LiveTelemetryS
         return {
           latest: normalized,
           history: newHistory,
-          deviceConnected: connected,
-          lastUpdatedAt: new Date(),
+          deviceConnected: live.connection.connected,
+          lastUpdatedAt: new Date(normalized.receivedAt ?? normalized.detectedAt),
+          liveState: live,
+          socketConnected: prev.socketConnected,
+          backendAvailable: true,
         };
       });
     } catch {
-      // If backend is unreachable, stay silent — do not crash
+      setState((prev) => ({
+        ...prev,
+        backendAvailable: false,
+      }));
     }
   }, []);
 
   useEffect(() => {
+    if (!patientId) return;
+
     // Immediate first poll
     poll();
     const id = setInterval(poll, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [poll]);
+  }, [patientId, poll]);
 
   // ----------------------------------------------------------------
   // SECONDARY: Socket.IO for sub-second updates between polls
   // ----------------------------------------------------------------
   useEffect(() => {
+    if (!patientId) return;
+
     try {
       connectSocket();
-      // Socket instance is imported above
+      const telemetryEventName = `telemetry:live:${patientId}`;
+      const deviceEventName = `device:status:${patientId}`;
 
       const onTelemetry = (data: LiveTelemetry) => {
         if (data.rawLine === lastRawLineRef.current) return; // already have it from poll
@@ -111,27 +139,63 @@ export function useLiveTelemetry(_patientId: string | undefined): LiveTelemetryS
           return {
             latest: data,
             history: newHistory,
-            deviceConnected: prev.deviceConnected,
-            lastUpdatedAt: new Date(),
+            deviceConnected: true,
+            lastUpdatedAt: new Date(data.receivedAt ?? data.detectedAt),
+            liveState: prev.liveState
+              ? {
+                  ...prev.liveState,
+                  latestTelemetry: data,
+                  connection: {
+                    ...prev.liveState.connection,
+                    connected: true,
+                  },
+                }
+              : prev.liveState,
+            socketConnected: prev.socketConnected,
+            backendAvailable: true,
           };
         });
       };
 
       const onDeviceStatus = (data: DeviceConnectionStatus) => {
-        setState((prev) => ({ ...prev, deviceConnected: data.connected }));
+        setState((prev) => ({
+          ...prev,
+          deviceConnected: data.connected,
+          liveState: prev.liveState
+            ? {
+                ...prev.liveState,
+                connection: {
+                  ...prev.liveState.connection,
+                  connected: data.connected,
+                },
+              }
+            : prev.liveState,
+        }));
       };
 
-      socket.on("telemetry:live:all", onTelemetry);
-      socket.on("device:status:all", onDeviceStatus);
+      const onConnect = () => {
+        setState((prev) => ({ ...prev, socketConnected: true }));
+      };
+
+      const onDisconnect = () => {
+        setState((prev) => ({ ...prev, socketConnected: false }));
+      };
+
+      socket.on("connect", onConnect);
+      socket.on("disconnect", onDisconnect);
+      socket.on(telemetryEventName, onTelemetry);
+      socket.on(deviceEventName, onDeviceStatus);
 
       return () => {
-        socket.off("telemetry:live:all", onTelemetry);
-        socket.off("device:status:all", onDeviceStatus);
+        socket.off("connect", onConnect);
+        socket.off("disconnect", onDisconnect);
+        socket.off(telemetryEventName, onTelemetry);
+        socket.off(deviceEventName, onDeviceStatus);
       };
     } catch {
-      // Socket setup failed — polling still works
+      setState((prev) => ({ ...prev, socketConnected: false }));
     }
-  }, []);
+  }, [patientId]);
 
   return state;
 }

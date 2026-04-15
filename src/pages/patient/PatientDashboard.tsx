@@ -27,6 +27,7 @@ import {
   Bar,
 } from "recharts";
 import { Card, CardHeader, StatusBadge } from "@/components/ui";
+import { PatientLiveDeviceSection } from "@/components/live/PatientLiveDeviceSection";
 import { useAuth } from "@/features/auth";
 import { useLiveTelemetry } from "@/hooks/useLiveTelemetry";
 import { patientMeApi, type DashboardSummary } from "@/services/api/patientMeApi";
@@ -392,8 +393,8 @@ function RecentEpisodes({ summary }: { summary: DashboardSummary | null }) {
 
 export function PatientDashboard() {
   const { user } = useAuth();
-  const patientId = (user as any)?._id as string | undefined;
-  const { latest, history, deviceConnected, lastUpdatedAt } = useLiveTelemetry(patientId);
+  const patientId = user?.id;
+  const { latest, history, lastUpdatedAt, liveState, socketConnected, backendAvailable } = useLiveTelemetry(patientId);
   const [alertModalDismissed, setAlertModalDismissed] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -479,44 +480,13 @@ export function PatientDashboard() {
         />
       </div>
 
-      {/* Device + live status row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <DeviceStatusCard connected={deviceConnected} />
-
-        <Card>
-          <p className="text-xs text-gray-500 mb-1">Tremor Status</p>
-          <p className={`text-sm font-semibold ${STATUS_COLOR[status ?? "UNKNOWN"]}`}>
-            {STATUS_TEXT[status ?? "UNKNOWN"]}
-          </p>
-        </Card>
-
-        <Card>
-          <p className="text-xs text-gray-500 mb-2">Severity</p>
-          {severity && severity !== "NONE" ? (
-            <StatusBadge severity={severity as any} label={severity} />
-          ) : (
-            <p className="text-sm text-gray-600">—</p>
-          )}
-        </Card>
-
-        <MetricCard
-          label="Frequency"
-          value={latest?.frequencyHz?.toFixed(2) ?? "—"}
-          unit="Hz"
-          highlight={severity && severity !== "NONE" ? SEVERITY_COLOR[severity] : undefined}
-        />
-
-        <MetricCard label="SNR" value={latest?.snr?.toFixed(1) ?? "—"} unit="dB" />
-      </div>
-
-      {/* Amplitude + status text row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MetricCard label="Amplitude" value={latest?.amplitude?.toFixed(3) ?? "—"} unit="g" />
-        <Card>
-          <p className="text-xs text-gray-500 mb-1">Device Status Text</p>
-          <p className="text-sm text-gray-300 truncate">{latest?.statusText ?? "—"}</p>
-        </Card>
-      </div>
+      <PatientLiveDeviceSection
+        latest={latest}
+        liveState={liveState}
+        backendAvailable={backendAvailable}
+        socketConnected={socketConnected}
+        lastUpdatedAt={lastUpdatedAt}
+      />
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
