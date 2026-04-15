@@ -229,3 +229,41 @@ export interface SerialDebugState {
   recentErrors: Array<{ rawLine: string; error: string; ts: string }>;
   waveform: WaveformAvailability;
 }
+
+// ------------------------------------------------------------------
+// Phase 5 - Patient dashboard summary types
+// ------------------------------------------------------------------
+
+export interface DailySummary {
+  period: "today";
+  episodeCount: number;
+  comparedToPrevious: number;
+  averageFrequency: number;
+  dominantSeverity: "high" | "medium" | "low" | "none";
+  severityCounts: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  totalDurationSeconds: number;
+  detectionCount: number;
+}
+
+export interface WeeklySummary {
+  period: "this_week";
+  episodeCount: number;
+  comparedToPrevious: number;
+  averageFrequency: number;
+  dominantSeverity: "high" | "medium" | "low" | "none";
+  severityCounts: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  totalDurationSeconds: number;
+  detectionCount: number;
+  dailyBreakdown: Array<{
+    date: string;
+    count: number;
+  }>;
+}
