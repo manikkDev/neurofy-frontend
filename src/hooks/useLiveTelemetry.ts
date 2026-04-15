@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { connectSocket, getSocket } from "@/services/socket/client";
+import { socket, connectSocket } from "@/services/socket/client";
 import type { LiveTelemetry, DeviceConnectionStatus, SerialDebugState } from "@/types/domain";
 
 const MAX_HISTORY = 30;
@@ -101,7 +101,7 @@ export function useLiveTelemetry(_patientId: string | undefined): LiveTelemetryS
   useEffect(() => {
     try {
       connectSocket();
-      const socket = getSocket();
+      // Socket instance is imported above
 
       const onTelemetry = (data: LiveTelemetry) => {
         if (data.rawLine === lastRawLineRef.current) return; // already have it from poll

@@ -7,6 +7,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  assignedDoctorId?: string | null;
+  assignedPatientIds?: string[];
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, role: "patient" | "doctor") => Promise<void>;
   logout: () => void;
@@ -17,6 +19,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [assignedDoctorId, _setAssignedDoctorId] = useState<string | null>(null);
+  const [assignedPatientIds, _setAssignedPatientIds] = useState<string[]>([]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -70,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        assignedDoctorId,
+        assignedPatientIds,
         login,
         signup,
         logout,
