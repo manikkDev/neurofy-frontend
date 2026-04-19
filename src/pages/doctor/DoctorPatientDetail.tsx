@@ -119,8 +119,43 @@ function CreateReportForm({
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [status, setStatus] = useState<"draft" | "completed">("completed");
+  const [period, setPeriod] = useState<"none" | "daily" | "weekly">("weekly");
   const [submitting, setSubmitting] = useState(false);
+  const [loadingSummary, setLoadingSummary] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const loadPeriodSummary = async (p: "daily" | "weekly") => {
+    try {
+      setLoadingSummary(true);
+      setErr(null);
+      const token = storage.getToken();
+      if (!token) return;
+      const res = await doctorApi.getReportPeriodSummary(patientId, p, token);
+      if (res.success && res.data) {
+        const s = res.data;
+        const periodLabel = p === "daily" ? "Today" : "Past 7 Days";
+        const autoTitle = `${periodLabel === "Today" ? "Daily" : "Weekly"} Clinical Report – ${new Date().toLocaleDateString()}`;
+        const totalMin = Math.round(s.totalDurationSeconds / 60);
+        const autoSummary = [
+          `Report Period: ${periodLabel}`,
+          ``,
+          `Total tremor episodes recorded: ${s.totalEpisodes}`,
+          `Severity breakdown: ${s.severityBreakdown.severe} severe, ${s.severityBreakdown.moderate} moderate, ${s.severityBreakdown.mild} mild.`,
+          `Dominant severity during this period: ${s.dominantSeverity}.`,
+          `Total tremor duration: ~${totalMin} minute${totalMin !== 1 ? "s" : ""}.`,
+          `Average dominant frequency: ${s.averageFrequency.toFixed(2)} Hz.`,
+          ``,
+          `Clinical observations: [please add specific observations, treatment changes, and recommendations]`,
+        ].join("\n");
+        if (!title.trim()) setTitle(autoTitle);
+        if (!summary.trim()) setSummary(autoSummary);
+      }
+    } catch (e: any) {
+      setErr(e.message || "Failed to load period summary");
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
 
   const submit = async () => {
     if (!title.trim() || !summary.trim()) { setErr("Title and summary are required"); return; }
@@ -129,9 +164,13 @@ function CreateReportForm({
       setErr(null);
       const token = storage.getToken();
       if (!token) return;
-      const res = await doctorApi.createReport(patientId, { title, summary, status }, token);
+      const res = await doctorApi.createReport(
+        patientId,
+        { title, summary, status, period: period === "none" ? undefined : period },
+        token
+      );
       if (res.success) {
-        setTitle(""); setSummary(""); setStatus("completed");
+        setTitle(""); setSummary(""); setStatus("completed"); setPeriod("weekly");
         onSuccess();
       }
     } catch (e: any) {
@@ -145,19 +184,54 @@ function CreateReportForm({
     <div className="p-4 bg-surface-overlay rounded-xl border border-surface-border space-y-3">
       <p className="text-sm font-semibold text-white">Generate Report</p>
       {err && <p className="text-xs text-red-400">{err}</p>}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <label className="text-xs text-gray-400">Period:</label>
+        <div className="flex gap-1 bg-surface-raised rounded-lg p-1 border border-surface-border">
+          {([
+            { value: "daily", label: "Daily" },
+            { value: "weekly", label: "Weekly" },
+            { value: "none", label: "Freeform" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setPeriod(opt.value)}
+              className={`px-3 py-1 text-xs rounded transition-colors ${
+                period === opt.value
+                  ? "bg-brand-600 text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {period !== "none" && (
+          <button
+            type="button"
+            onClick={() => loadPeriodSummary(period)}
+            disabled={loadingSummary}
+            className="px-3 py-1 text-xs rounded-lg bg-brand-500/10 border border-brand-500/30 text-brand-400 hover:bg-brand-500/20 transition-colors disabled:opacity-50"
+          >
+            {loadingSummary ? "Loading…" : "Auto-fill from period stats"}
+          </button>
+        )}
+      </div>
+
       <input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Report title (e.g. Monthly Analysis – March 2026)"
+        placeholder="Report title (e.g. Weekly Clinical Report – March 2026)"
         className="w-full px-3 py-2.5 rounded-lg bg-surface-raised border border-surface-border text-gray-200 text-sm focus:outline-none focus:border-brand-500"
       />
       <textarea
-        rows={4}
+        rows={6}
         value={summary}
         onChange={(e) => setSummary(e.target.value)}
         placeholder="Report summary and clinical findings…"
-        className="w-full px-3 py-2.5 rounded-lg bg-surface-raised border border-surface-border text-gray-200 text-sm focus:outline-none focus:border-brand-500 resize-none"
+        className="w-full px-3 py-2.5 rounded-lg bg-surface-raised border border-surface-border text-gray-200 text-sm focus:outline-none focus:border-brand-500 resize-y font-mono"
       />
       <div className="flex items-center justify-between">
         <label className="text-xs text-gray-400">
@@ -569,7 +643,7 @@ export function DoctorPatientDetail() {
                   <Card key={report._id}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
+                        <div className="flex items-center gap-3 mb-1 flex-wrap">
                           <h3 className="text-base font-semibold text-white">{report.title}</h3>
                           <span className={`px-2 py-0.5 rounded text-xs font-medium border ${
                             report.status === "completed"
@@ -578,13 +652,40 @@ export function DoctorPatientDetail() {
                           }`}>
                             {report.status}
                           </span>
+                          {(report as any).reportPeriod?.label && (
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-brand-500/10 text-brand-400 border border-brand-500/30">
+                              {(report as any).reportPeriod.label}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-400 leading-relaxed">{report.summary}</p>
+                        <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">{report.summary}</p>
                         <p className="text-xs text-gray-500 mt-2">
                           Generated: {new Date(report.generatedAt).toLocaleDateString()} · By Dr.{" "}
                           {(report.doctorId as any)?.name ?? "Unknown"}
                         </p>
                       </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = storage.getToken();
+                            if (!token) return;
+                            const blob = await doctorApi.downloadReportPdf(report._id, token);
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `Neurofy_Report_${report._id}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500/10 border border-brand-500/30 text-brand-400 hover:bg-brand-500/20 transition-colors flex-shrink-0"
+                      >
+                        ⬇ PDF
+                      </button>
                     </div>
                   </Card>
                 ))}

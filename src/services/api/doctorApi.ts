@@ -3,7 +3,18 @@
  * All calls hit /api/doctors/* and require a doctor JWT.
  */
 import { apiClient } from "./client";
-import type { ApiResponse, DoctorNote, Report, Alert } from "@/types";
+import type { ApiResponse, DoctorNote, Report, Alert, PatientLiveDeviceState } from "@/types";
+
+export interface ReportPeriodSummary {
+  period: "daily" | "weekly" | "custom";
+  startDate: string;
+  endDate: string;
+  totalEpisodes: number;
+  severityBreakdown: { severe: number; moderate: number; mild: number };
+  totalDurationSeconds: number;
+  averageFrequency: number;
+  dominantSeverity: string;
+}
 
 // ── Local types (doctor-only shapes) ────────────────────────────────
 
@@ -90,7 +101,7 @@ export const doctorApi = {
 
   createReport: (
     patientId: string,
-    data: { title: string; summary: string; status?: string },
+    data: { title: string; summary: string; status?: string; period?: "daily" | "weekly" },
     token: string
   ) =>
     apiClient.post<ApiResponse<Report>>(`/doctors/patients/${patientId}/reports`, data, h(token)),
@@ -98,9 +109,38 @@ export const doctorApi = {
   getPatientReports: (patientId: string, token: string) =>
     apiClient.get<ApiResponse<Report[]>>(`/doctors/patients/${patientId}/reports`, h(token)),
 
+  getReportPeriodSummary: (
+    patientId: string,
+    period: "daily" | "weekly",
+    token: string
+  ) =>
+    apiClient.get<ApiResponse<ReportPeriodSummary>>(
+      `/doctors/patients/${patientId}/report-summary?period=${period}`,
+      h(token)
+    ),
+
+  getPatientLive: (patientId: string, token: string) =>
+    apiClient.get<ApiResponse<PatientLiveDeviceState>>(
+      `/doctors/patients/${patientId}/live`,
+      h(token)
+    ),
+
   getSevereAlerts: (token: string) =>
     apiClient.get<ApiResponse<Alert[]>>("/doctors/alerts/severe", h(token)),
 
   acknowledgeAlert: (alertId: string, token: string) =>
     apiClient.patch<ApiResponse<Alert>>(`/doctors/alerts/${alertId}/acknowledge`, {}, h(token)),
+
+  /**
+   * Download a report as PDF blob.
+   * Returns a Blob that the caller can save via URL.createObjectURL.
+   */
+  downloadReportPdf: async (reportId: string, token: string): Promise<Blob> => {
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    const res = await fetch(`${base}/reports/${reportId}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to download report");
+    return res.blob();
+  },
 };
