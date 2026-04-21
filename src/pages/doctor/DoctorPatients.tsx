@@ -188,14 +188,19 @@ export function DoctorPatients() {
         const result = JSON.parse(text);
         
         if (result.success) {
-          // Refresh patient list
-          load();
+          console.log('Patient added successfully, refreshing list...');
+          // Clear search and force refresh
+          setSearchText("");
+          setDebouncedSearch("");
+          // Refresh patient list with no query
+          await load();
           // Close modal
           setShowAddModal(false);
-          // Reset state
+          // Reset modal state
           setSearchEmail("");
           setFoundPatient(null);
           setAddPatientError(null);
+          console.log('Patient list refreshed');
         } else {
           setAddPatientError(result.error?.message || 'Failed to add patient');
         }
