@@ -37,6 +37,14 @@ export function DoctorPatients() {
   const [error, setError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  // Add patient modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchingPatient, setSearchingPatient] = useState(false);
+  const [foundPatient, setFoundPatient] = useState<any>(null);
+  const [addingPatient, setAddingPatient] = useState(false);
+  const [addPatientError, setAddPatientError] = useState<string | null>(null);
 
   // Debounce the search input
   useEffect(() => {
@@ -58,6 +66,82 @@ export function DoctorPatients() {
     }
   }, []);
 
+  // Search patient by email
+  const searchPatientByEmail = async () => {
+    if (!searchEmail.trim()) return;
+    
+    setSearchingPatient(true);
+    setFoundPatient(null);
+    setAddPatientError(null);
+    
+    try {
+      const token = storage.getToken();
+      if (!token) return;
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/patients/search-by-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email: searchEmail.trim() }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setFoundPatient(result.data);
+      } else {
+        setAddPatientError(result.error?.message || 'Patient not found');
+      }
+    } catch (err: any) {
+      setAddPatientError(err.message || 'Failed to search patient');
+    } finally {
+      setSearchingPatient(false);
+    }
+  };
+
+  // Add patient to doctor's list
+  const addPatientToDoctor = async () => {
+    if (!foundPatient) return;
+    
+    setAddingPatient(true);
+    setAddPatientError(null);
+    
+    try {
+      const token = storage.getToken();
+      if (!token) return;
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/patients/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ patientId: foundPatient._id }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh patient list
+        load();
+        // Close modal
+        setShowAddModal(false);
+        // Reset state
+        setSearchEmail("");
+        setFoundPatient(null);
+        setAddPatientError(null);
+      } else {
+        setAddPatientError(result.error?.message || 'Failed to add patient');
+      }
+    } catch (err: any) {
+      setAddPatientError(err.message || 'Failed to add patient');
+    } finally {
+      setAddingPatient(false);
+    }
+  };
+
   useEffect(() => {
     load(debouncedSearch || undefined);
   }, [debouncedSearch, load]);
@@ -73,15 +157,23 @@ export function DoctorPatients() {
             {debouncedSearch ? ` matching "${debouncedSearch}"` : " in system"}
           </p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search by name or email…"
-            className="w-full px-4 py-2.5 pl-10 rounded-lg bg-surface-overlay border border-surface-border text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-brand-500"
-          />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">🔍</span>
+        <div className="flex gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-72">
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search by name or email..."
+              className="w-full px-4 py-2.5 pl-10 rounded-lg bg-surface-overlay border border-surface-border text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-brand-500"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">🔍</span>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            + Add Patient
+          </button>
         </div>
       </div>
 
@@ -166,6 +258,94 @@ export function DoctorPatients() {
           </div>
         )}
       </Card>
+
+      {/* Add Patient Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-surface-2 border border-surface-border rounded-xl p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Add Patient</h2>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSearchEmail("");
+                  setFoundPatient(null);
+                  setAddPatientError(null);
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Patient Email
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={searchEmail}
+                    onChange={(e) => setSearchEmail(e.target.value)}
+                    placeholder="Enter patient's email..."
+                    className="flex-1 px-3 py-2 bg-surface-overlay border border-surface-border rounded-lg text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500"
+                    onKeyPress={(e) => e.key === 'Enter' && searchPatientByEmail()}
+                  />
+                  <button
+                    onClick={searchPatientByEmail}
+                    disabled={searchingPatient || !searchEmail.trim()}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-600 text-white rounded-lg font-medium text-sm transition-colors"
+                  >
+                    {searchingPatient ? '...' : 'Search'}
+                  </button>
+                </div>
+              </div>
+
+              {addPatientError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <p className="text-sm text-red-400">{addPatientError}</p>
+                </div>
+              )}
+
+              {foundPatient && (
+                <div className="p-4 bg-surface-overlay border border-surface-border rounded-lg">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-white">{foundPatient.name}</h3>
+                      <p className="text-sm text-gray-400">{foundPatient.email}</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Patient since {new Date(foundPatient.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {foundPatient.latestEpisode && (
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Latest Episode</p>
+                        <StatusBadge 
+                          severity={foundPatient.latestEpisode.maxSeverity as any} 
+                          label={foundPatient.latestEpisode.maxSeverity}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {foundPatient.alreadyAssigned ? (
+                    <p className="text-sm text-yellow-400">This patient is already assigned to you.</p>
+                  ) : (
+                    <button
+                      onClick={addPatientToDoctor}
+                      disabled={addingPatient}
+                      className="w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-600 text-white rounded-lg font-medium text-sm transition-colors"
+                    >
+                      {addingPatient ? 'Adding...' : 'Add to My Patients'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
