@@ -77,7 +77,6 @@ export function Sidebar({ variant = "public" }: SidebarProps) {
                       : "text-gray-400 hover:text-gray-200 hover:bg-surface-overlay"
                   }`
                 }
-                aria-current={({ isActive }) => (isActive ? "page" : undefined)}
               >
                 <span className="text-base" aria-hidden="true">{item.icon}</span>
                 {item.label}
