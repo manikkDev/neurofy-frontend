@@ -56,11 +56,25 @@ export function DoctorPatients() {
   const load = useCallback(async (q?: string) => {
     try {
       setLoading(true);
+      setError(null);
       const token = storage.getToken();
-      if (!token) return;
+      if (!token) {
+        setError("No authentication token found");
+        return;
+      }
+      
+      console.log("Loading patients with query:", q);
       const res = await doctorApi.getPatients(token, q || undefined);
-      if (res.success) setPatients(res.data ?? []);
+      console.log("API response:", res);
+      
+      if (res.success) {
+        setPatients(res.data ?? []);
+        console.log("Patients loaded:", res.data?.length || 0);
+      } else {
+        setError(res.error?.message || "Failed to load patients");
+      }
     } catch (err: any) {
+      console.error("Error loading patients:", err);
       setError(err.message || "Failed to load patients");
     } finally {
       setLoading(false);
@@ -193,9 +207,12 @@ export function DoctorPatients() {
           </div>
         ) : patients.length === 0 ? (
           <div className="text-center py-14">
-            <div className="text-4xl mb-3">👥</div>
+            <div className="text-4xl mb-3">ðŸ‘¥</div>
             <p className="text-gray-500">
-              {debouncedSearch ? "No patients match your search" : "No patients registered yet"}
+              {debouncedSearch ? "No patients match your search" : "No patients assigned to you yet"}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              Use the "Add Patient" button to search for patients by email and add them to your list.
             </p>
           </div>
         ) : (
