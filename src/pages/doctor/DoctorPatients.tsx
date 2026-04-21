@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, StatusBadge } from "@/components/ui";
 import { doctorApi, type PatientListItem } from "@/services/api/doctorApi";
 import { storage } from "@/lib/storage";
+import type { Severity } from "@/types";
 
 function DeviceDot({ status, paired }: { status: string | null; paired: boolean }) {
   if (!paired || !status) {
@@ -233,9 +234,9 @@ export function DoctorPatients() {
                     </td>
                     <td className="py-3 px-4">
                       {p.lastSeverity ? (
-                        <StatusBadge severity={p.lastSeverity as any} label={p.lastSeverity} />
+                        <StatusBadge severity={p.lastSeverity as Severity} label={p.lastSeverity} />
                       ) : (
-                        <span className="text-gray-600 text-sm">—</span>
+                        <span className="text-gray-600 text-sm">-</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-300 font-medium">{p.totalEpisodes}</td>
@@ -322,7 +323,7 @@ export function DoctorPatients() {
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Latest Episode</p>
                         <StatusBadge 
-                          severity={foundPatient.latestEpisode.maxSeverity as any} 
+                          severity={foundPatient.latestEpisode.maxSeverity as Severity} 
                           label={foundPatient.latestEpisode.maxSeverity}
                         />
                       </div>
