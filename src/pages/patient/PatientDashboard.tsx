@@ -108,8 +108,6 @@ export function PatientDashboard() {
     }
   }, [latest?.detectedAt]);
 
-  const currentSeverity = latest?.severity === "SEVERE" ? "high" : latest?.severity === "MODERATE" ? "medium" : latest?.severity === "MILD" ? "low" : "none";
-
   return (
     <div className="space-y-6 pb-8">
       {/* Severe alert modal */}

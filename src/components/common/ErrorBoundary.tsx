@@ -3,15 +3,11 @@
  * 
  * Catches React errors and displays a fallback UI
  */
-import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary as ReactErrorBoundary, FallbackProps } from "react-error-boundary";
 import { AlertTriangle } from "lucide-react";
 
-interface ErrorFallbackProps {
-  error: Error;
-  resetErrorBoundary: () => void;
-}
-
-function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  const err = error instanceof Error ? error : new Error(String(error));
   return (
     <div
       role="alert"
@@ -27,13 +23,13 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
         <p className="text-gray-600 mb-6">
           We encountered an unexpected error. Please try again.
         </p>
-        {process.env.NODE_ENV === "development" && (
+        {import.meta.env.DEV && (
           <details className="mb-6 text-left">
             <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
               Error details
             </summary>
             <pre className="mt-2 text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
-              {error.message}
+              {err.message}
             </pre>
           </details>
         )}
