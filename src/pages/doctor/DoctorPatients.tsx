@@ -91,9 +91,16 @@ export function DoctorPatients() {
     
     try {
       const token = storage.getToken();
-      if (!token) return;
+      if (!token) {
+        setAddPatientError('No authentication token found');
+        return;
+      }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/patients/search-by-email`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      console.log('Searching patient with email:', searchEmail.trim());
+      console.log('API URL:', `${apiUrl}/doctors/patients/search-by-email`);
+      
+      const response = await fetch(`${apiUrl}/doctors/patients/search-by-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,14 +109,36 @@ export function DoctorPatients() {
         body: JSON.stringify({ email: searchEmail.trim() }),
       });
       
-      const result = await response.json();
+      console.log('Response status:', response.status);
       
-      if (result.success) {
-        setFoundPatient(result.data);
-      } else {
-        setAddPatientError(result.error?.message || 'Patient not found');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        setAddPatientError(`API Error (${response.status}): ${errorText || 'Unknown error'}`);
+        return;
+      }
+      
+      const text = await response.text();
+      console.log('Response text:', text);
+      
+      if (!text) {
+        setAddPatientError('Empty response from server');
+        return;
+      }
+      
+      try {
+        const result = JSON.parse(text);
+        
+        if (result.success) {
+          setFoundPatient(result.data);
+        } else {
+          setAddPatientError(result.error?.message || 'Patient not found');
+        }
+      } catch (parseError) {
+        setAddPatientError('Invalid JSON response from server');
       }
     } catch (err: any) {
+      console.error('Error searching patient:', err);
       setAddPatientError(err.message || 'Failed to search patient');
     } finally {
       setSearchingPatient(false);
@@ -125,9 +154,15 @@ export function DoctorPatients() {
     
     try {
       const token = storage.getToken();
-      if (!token) return;
+      if (!token) {
+        setAddPatientError('No authentication token found');
+        return;
+      }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/patients/add`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      console.log('Adding patient:', foundPatient._id);
+      
+      const response = await fetch(`${apiUrl}/doctors/patients/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,21 +171,39 @@ export function DoctorPatients() {
         body: JSON.stringify({ patientId: foundPatient._id }),
       });
       
-      const result = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error adding patient:', errorText);
+        setAddPatientError(`API Error (${response.status}): ${errorText || 'Unknown error'}`);
+        return;
+      }
       
-      if (result.success) {
-        // Refresh patient list
-        load();
-        // Close modal
-        setShowAddModal(false);
-        // Reset state
-        setSearchEmail("");
-        setFoundPatient(null);
-        setAddPatientError(null);
-      } else {
-        setAddPatientError(result.error?.message || 'Failed to add patient');
+      const text = await response.text();
+      if (!text) {
+        setAddPatientError('Empty response from server');
+        return;
+      }
+      
+      try {
+        const result = JSON.parse(text);
+        
+        if (result.success) {
+          // Refresh patient list
+          load();
+          // Close modal
+          setShowAddModal(false);
+          // Reset state
+          setSearchEmail("");
+          setFoundPatient(null);
+          setAddPatientError(null);
+        } else {
+          setAddPatientError(result.error?.message || 'Failed to add patient');
+        }
+      } catch (parseError) {
+        setAddPatientError('Invalid JSON response from server');
       }
     } catch (err: any) {
+      console.error('Error adding patient:', err);
       setAddPatientError(err.message || 'Failed to add patient');
     } finally {
       setAddingPatient(false);
