@@ -45,6 +45,7 @@ export function DoctorPatients() {
   const [searchingPatient, setSearchingPatient] = useState(false);
   const [foundPatient, setFoundPatient] = useState<any>(null);
   const [addingPatient, setAddingPatient] = useState(false);
+  const [removingPatient, setRemovingPatient] = useState<string | null>(null);
   const [addPatientError, setAddPatientError] = useState<string | null>(null);
 
   // Debounce the search input
@@ -215,6 +216,37 @@ export function DoctorPatients() {
     }
   };
 
+  const handleRemovePatient = async (patientId: string) => {
+    if (!confirm('Are you sure you want to remove this patient from your list?')) {
+      return;
+    }
+
+    setRemovingPatient(patientId);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/patients/${patientId}/remove`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (res.ok) {
+        console.log('Patient removed successfully');
+        load(debouncedSearch || undefined);
+      } else {
+        const error = await res.json();
+        console.error('Failed to remove patient:', error);
+        alert(error.error?.message || 'Failed to remove patient');
+      }
+    } catch (err: any) {
+      console.error('Error removing patient:', err);
+      alert(err.message || 'Failed to remove patient');
+    } finally {
+      setRemovingPatient(null);
+    }
+  };
+
   useEffect(() => {
     load(debouncedSearch || undefined);
   }, [debouncedSearch, load]);
@@ -278,7 +310,7 @@ export function DoctorPatients() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-border">
-                  {["Patient", "Email", "Last Activity", "Last Severity", "Episodes", "Device", "Alerts"].map(
+                  {["Patient", "Email", "Last Activity", "Last Severity", "Episodes", "Device", "Alerts", "Actions"].map(
                     (col) => (
                       <th
                         key={col}
@@ -294,31 +326,30 @@ export function DoctorPatients() {
                 {patients.map((p) => (
                   <tr
                     key={p._id}
-                    onClick={() => navigate(`/doctor/patients/${p._id}`)}
-                    className="border-b border-surface-border hover:bg-surface-overlay cursor-pointer transition-colors"
+                    className="border-b border-surface-border hover:bg-surface-overlay transition-colors"
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>
                       <p className="text-sm font-semibold text-gray-200">{p.name}</p>
                       <p className="text-xs text-gray-600 font-mono">{p._id.toString().slice(-8)}</p>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-400">{p.email}</td>
-                    <td className="py-3 px-4 text-sm text-gray-400">
+                    <td className="py-3 px-4 text-sm text-gray-400 cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>{p.email}</td>
+                    <td className="py-3 px-4 text-sm text-gray-400 cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>
                       {p.lastActivity
                         ? new Date(p.lastActivity).toLocaleDateString()
                         : <span className="text-gray-600">—</span>}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>
                       {p.lastSeverity ? (
                         <StatusBadge severity={p.lastSeverity as Severity} label={p.lastSeverity} />
                       ) : (
                         <span className="text-gray-600 text-sm">-</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-300 font-medium">{p.totalEpisodes}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 text-sm text-gray-300 font-medium cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>{p.totalEpisodes}</td>
+                    <td className="py-3 px-4 cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>
                       <DeviceDot status={p.deviceStatus} paired={p.devicePaired} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 cursor-pointer" onClick={() => navigate(`/doctor/patients/${p._id}`)}>
                       {p.activeAlerts > 0 ? (
                         <span className="px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30">
                           {p.activeAlerts} ⚠
@@ -326,6 +357,18 @@ export function DoctorPatients() {
                       ) : (
                         <span className="text-gray-600 text-sm">—</span>
                       )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePatient(p._id);
+                        }}
+                        disabled={removingPatient === p._id}
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs rounded border border-red-500/30 transition-colors disabled:opacity-50"
+                      >
+                        {removingPatient === p._id ? 'Removing...' : 'Remove'}
+                      </button>
                     </td>
                   </tr>
                 ))}
