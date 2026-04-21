@@ -2,6 +2,7 @@ export type TremorStatus = "DETECTED" | "NOT_DETECTED" | "CHECKING" | "UNKNOWN";
 export type Severity = "MILD" | "MODERATE" | "SEVERE" | "NONE";
 export type DeviceStatus = "active" | "inactive" | "maintenance";
 export type PairingStatus = "paired" | "unpaired" | "pending";
+export type TransportType = "usb_serial" | "wifi";
 export type AppointmentStatus = "requested" | "scheduled" | "confirmed" | "rejected" | "rescheduled" | "completed" | "cancelled";
 export type ReportStatus = "draft" | "completed" | "archived";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
@@ -14,6 +15,11 @@ export interface Device {
   label: string;
   pairingStatus: PairingStatus;
   status: DeviceStatus;
+  transportType: TransportType;
+  wifiToken?: string;
+  wifiConnected?: boolean;
+  wifiLastConnectedAt?: string;
+  wifiIpAddress?: string;
   batteryLevel?: number;
   lastSyncAt?: string;
   firmwareVersion?: string;
@@ -182,6 +188,7 @@ export interface PatientLiveDeviceState {
     label: string | null;
     pairingStatus: string | null;
     status: string | null;
+    transportType: string | null;
     batteryLevel?: number;
     lastSyncAt?: string | null;
     firmwareVersion?: string | null;
@@ -195,6 +202,9 @@ export interface PatientLiveDeviceState {
     lastConnectedAt?: string;
     lastDisconnectedAt?: string;
     lastReceivedAt?: string;
+    wifiConnected?: boolean;
+    wifiLastConnectedAt?: string;
+    wifiIpAddress?: string;
   };
   latestTelemetry: LiveTelemetry | null;
   recentEvents: Array<{

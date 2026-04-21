@@ -58,7 +58,7 @@ export function SerialDebugPanel() {
         }`}
       >
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-          data?.connected ? "bg-green-400 animate-pulse" : "bg-red-500"
+          (data?.connected || data?.lastNormalized?.source === "WIRELESS") ? "bg-green-400 animate-pulse" : "bg-red-500"
         }`} />
         <span>⚙ Serial Debug</span>
         {loading && <span className="ml-auto text-gray-600">loading…</span>}
@@ -73,20 +73,27 @@ export function SerialDebugPanel() {
 
           {data && (
             <>
-              {/* Connection status */}
+              {/* Connection status - Serial or WiFi */}
               <div>
                 <p className="text-gray-500 mb-1">Connection</p>
-                <div className="flex gap-3">
-                  <span className={data.connected ? "text-green-400" : "text-red-400"}>
-                    {data.connected ? "● CONNECTED" : "○ DISCONNECTED"}
-                  </span>
-                  <span className="text-gray-600">
-                    {data.portPath} @ {data.baudRate}
-                  </span>
-                </div>
-                {data.lastConnectedAt && (
+                {data.lastNormalized?.source === "WIRELESS" ? (
+                  <div className="flex gap-3">
+                    <span className="text-green-400">● WIFI CONNECTED</span>
+                    <span className="text-gray-600">WiFi HTTP Mode</span>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <span className={data.connected ? "text-green-400" : "text-red-400"}>
+                      {data.connected ? "● SERIAL CONNECTED" : "○ SERIAL DISCONNECTED"}
+                    </span>
+                    <span className="text-gray-600">
+                      {data.portPath} @ {data.baudRate}
+                    </span>
+                  </div>
+                )}
+                {data.lastReceivedAt && (
                   <p className="text-gray-600">
-                    Last connected: {new Date(data.lastConnectedAt).toLocaleTimeString()}
+                    Last data: {new Date(data.lastReceivedAt).toLocaleTimeString()}
                   </p>
                 )}
               </div>

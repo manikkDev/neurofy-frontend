@@ -12,6 +12,7 @@ import {
   PatientAppointments,
   PatientNotes,
   PatientAlerts,
+  PatientDeviceSettings,
   DoctorDashboard,
   DoctorPatients,
   DoctorPatientDetail,
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: "appointments", element: <PatientAppointments /> },
       { path: "notes", element: <PatientNotes /> },
       { path: "alerts", element: <PatientAlerts /> },
+      { path: "device-settings", element: <PatientDeviceSettings /> },
     ],
   },
   {

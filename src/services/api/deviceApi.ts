@@ -6,7 +6,7 @@ export const deviceApi = {
     const response = await apiClient.get<ApiResponse<Device[]>>("/devices", {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data;
+    return response;
   },
 
   getDeviceById: async (deviceId: string, token: string) => {
@@ -16,7 +16,7 @@ export const deviceApi = {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    return response.data;
+    return response;
   },
 
   registerDevice: async (
@@ -33,7 +33,7 @@ export const deviceApi = {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    return response.data;
+    return response;
   },
 
   pairDevice: async (deviceId: string, token: string) => {
@@ -44,7 +44,7 @@ export const deviceApi = {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    return response.data;
+    return response;
   },
 
   getDeviceStatus: async (deviceId: string, token: string) => {
@@ -54,6 +54,49 @@ export const deviceApi = {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    return response.data;
+    return response;
+  },
+
+  updateTransportType: async (
+    deviceId: string,
+    transportType: "usb_serial" | "wifi",
+    token: string
+  ) => {
+    const response = await apiClient.patch<ApiResponse<Device>>(
+      `/devices/${deviceId}/transport`,
+      { transportType },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response;
+  },
+
+  getWiFiConfig: async (deviceId: string, token: string) => {
+    const response = await apiClient.get<ApiResponse<{
+      deviceId: string;
+      wifiToken: string;
+      serverUrl: string;
+    }>>(
+      `/devices/${deviceId}/wifi-config`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response;
+  },
+
+  regenerateWiFiToken: async (deviceId: string, token: string) => {
+    const response = await apiClient.post<ApiResponse<{
+      deviceId: string;
+      wifiToken: string;
+    }>>(
+      `/devices/${deviceId}/regenerate-wifi-token`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response;
   },
 };

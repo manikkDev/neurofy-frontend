@@ -8,6 +8,7 @@ export { PatientReports } from "./patient/PatientReports";
 export { PatientAppointments } from "./patient/PatientAppointments";
 export { PatientNotes } from "./patient/PatientNotes";
 export { PatientAlerts } from "./patient/PatientAlerts";
+export { PatientDeviceSettings } from "./patient/PatientDeviceSettings";
 export { DoctorDashboard } from "./doctor/DoctorDashboard";
 export { DoctorPatients } from "./doctor/DoctorPatients";
 export { DoctorPatientDetail } from "./doctor/DoctorPatientDetail";

@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardHeader } from "@/components/ui";
 import { PatientLiveDeviceSection } from "@/components/live/PatientLiveDeviceSection";
 import { SummaryCard, MetricCard, EmptyState, SeverityBadge } from "@/components/patient";
@@ -126,45 +126,13 @@ export function PatientDashboard() {
       {/* Live device status section */}
       <PatientLiveDeviceSection
         latest={latest}
+        history={history}
         liveState={liveState}
         backendAvailable={backendAvailable}
         socketConnected={socketConnected}
         lastUpdatedAt={lastUpdatedAt}
       />
 
-      {/* Current status overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-500">Current Tremor Status</p>
-            <p className="text-2xl font-bold text-white">
-              {latest?.status === "DETECTED" ? "Detected" : latest?.status === "CHECKING" ? "Checking" : latest?.status === "NOT_DETECTED" ? "Not detected" : "Unknown"}
-            </p>
-            {currentSeverity !== "none" && (
-              <div>
-                <p className="text-xs text-gray-500 mb-2">Severity Level</p>
-                <SeverityBadge severity={currentSeverity} size="lg" />
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <MetricCard
-          label="Average Frequency"
-          value={latest?.frequencyHz?.toFixed(1) ?? "—"}
-          unit="Hz"
-          icon="📊"
-          size="lg"
-        />
-
-        <MetricCard
-          label="Signal Quality"
-          value={latest?.snr?.toFixed(1) ?? "—"}
-          unit="dB SNR"
-          icon="📡"
-          size="lg"
-        />
-      </div>
 
       {/* Daily Summary */}
       <SummaryCard
@@ -287,38 +255,6 @@ export function PatientDashboard() {
           </div>
         )}
       </SummaryCard>
-
-      {/* Progress Tracking - Recent Trend */}
-      <Card>
-        <CardHeader title="Recent Tremor Trend" subtitle="Live frequency measurements over time" />
-        <div className="mt-4">
-          {history.length === 0 ? (
-            <EmptyState
-              icon="📈"
-              title="No trend data yet"
-              message="Tremor frequency data will appear here once your device starts recording measurements."
-            />
-          ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={history}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis
-                  dataKey="detectedAt"
-                  stroke="#888"
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(val) => new Date(val).toLocaleTimeString()}
-                />
-                <YAxis stroke="#888" tick={{ fontSize: 12 }} label={{ value: "Hz", angle: -90, position: "insideLeft" }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }}
-                  labelFormatter={(val) => new Date(val).toLocaleString()}
-                />
-                <Line type="monotone" dataKey="frequencyHz" stroke="#818cf8" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </Card>
 
       {/* Dev debug panel */}
       <SerialDebugPanel />

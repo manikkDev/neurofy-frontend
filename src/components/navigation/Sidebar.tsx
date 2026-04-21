@@ -13,6 +13,7 @@ const patientNav: NavItem[] = [
   { label: "Notes", to: "/patient/notes", icon: "📝" },
   { label: "Appointments", to: "/patient/appointments", icon: "📅" },
   { label: "Alerts", to: "/patient/alerts", icon: "🔔" },
+  { label: "Device Settings", to: "/patient/device-settings", icon: "⚙️" },
 ];
 
 const doctorNav: NavItem[] = [
